@@ -1,0 +1,12 @@
+{
+  "source": "https://ndownloader.figshare.com/files/5976042",
+  "sha256": "8045aca0d84e70e622d1148d7df782496f6333bf6eb979a1b0837c42a9fd9561",
+  "dataset": "KDD Cup 1999 10% (historical simulated network benchmark)",
+  "rows": 20000,
+  "deduplication": "13 selected predictors, conflicting-label vectors removed",
+  "limitations": [
+    "No timestamps or real account/device identifiers",
+    "Random disjoint-vector holdout, not temporal or enterprise validation",
+    "Attack-enriched benchmark prevalence is not production prevalence"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "features": {
+    "duration": {
+      "psi": 0.0
+    },
+    "src_bytes": {
+      "psi": 8.768644318503594e-05
+    },
+    "dst_bytes": {
+      "psi": 0.00011227735068348346
+    },
+    "num_failed_logins": {
+      "psi": 0.0
+    },
+    "count": {
+      "psi": 0.00022100437005740335
+    },
+    "srv_count": {
+      "psi": 0.0003100023348655131
+    },
+    "serror_rate": {
+      "psi": 0.0
+    },
+    "rerror_rate": {
+      "psi": 0.0
+    },
+    "same_srv_rate": {
+      "psi": 2.4389671056471e-05
+    },
+    "diff_srv_rate": {
+      "psi": 3.097189130338518e-05
+    },
+    "dst_host_count": {
+      "psi": 3.387190887953767e-05
+    },
+    "dst_host_srv_count": {
+      "psi": 0.0003051717423474603
+    },
+    "dst_host_same_srv_rate": {
+      "psi": 0.00014593505609498478
+    }
+  },
+  "note": "PSI is a distribution-shift heuristic, not proof of accuracy degradation; confirm with delayed labels."
+}
