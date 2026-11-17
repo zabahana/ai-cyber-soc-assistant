@@ -28,7 +28,7 @@ def test_overview_and_investigation(monkeypatch,tmp_path):
     assert not at.exception
     assert not at.text_input # no pending item remains
 
-@pytest.mark.skipif(not (APP.parent/'artifacts/model.joblib').exists(),reason='local trained model required')
+@pytest.mark.skipif(not (APP.parent/'artifacts/model-metadata.json').exists(),reason='portable trained model required')
 def test_model_and_drift(monkeypatch,tmp_path):
     at=app(monkeypatch,tmp_path)
     at.sidebar.radio[0].set_value('Model lab').run()
@@ -89,3 +89,16 @@ def test_approve_simulation(monkeypatch,tmp_path):
     assert queue.audit()[0]['action']=='approved'
     assert queue.audit()[0]['details']['executed'] is False
     queue.db.close()
+
+
+def test_default_review_sessions_separate(monkeypatch):
+    monkeypatch.delenv('SOC_REVIEW_DB',raising=False)
+    first=AppTest.from_file(str(APP),default_timeout=30).run()
+    first.sidebar.radio[0].set_value('Investigate').run()
+    first.button[0].click().run()
+    second=AppTest.from_file(str(APP),default_timeout=30).run()
+    second.sidebar.radio[0].set_value('Human review').run()
+    assert not second.exception
+    assert any('Select a record' in message.value for message in second.info)
+    first.sidebar.radio[0].set_value('Human review').run()
+    assert first.text_input

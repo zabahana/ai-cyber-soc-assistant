@@ -2,10 +2,11 @@
 import hashlib
 import json
 import os
+import tempfile
 from pathlib import Path
-import joblib
 import pandas as pd
 import streamlit as st
+from soc_assistant.portable import load_portable
 from soc_assistant.data import FEATURES
 from soc_assistant.ui_validation import RATE_FEATURES, validate_model_input
 from soc_assistant.detection import score, drift
@@ -13,6 +14,14 @@ from soc_assistant.investigation import investigate
 from soc_assistant.review import ReviewQueue, ALLOWED_ACTIONS
 
 ROOT = Path(__file__).resolve().parent
+
+def review_database():
+    configured = os.environ.get('SOC_REVIEW_DB')
+    if configured:
+        return configured
+    if '_review_directory' not in st.session_state:
+        st.session_state['_review_directory'] = tempfile.TemporaryDirectory(prefix='soc-review-')
+    return str(Path(st.session_state['_review_directory'].name) / 'reviews.db')
 ART = Path(os.environ.get('SOC_ARTIFACT_DIR', ROOT / 'artifacts'))
 st.set_page_config(page_title='SOC | Investigation Workbench', page_icon='🛡️', layout='wide')
 st.markdown('''<style>.block-container{padding-top:2rem;max-width:1500px} [data-testid="stMetric"]{border:1px solid #284355;border-radius:10px;padding:16px} h1{letter-spacing:-1px}</style>''', unsafe_allow_html=True)
@@ -30,20 +39,20 @@ try:
 except (OSError, ValueError) as error:
     st.error(f'Artifacts unavailable: {error}. Run python -m soc_assistant.cli train --rows 20000 first.')
     st.stop()
-model_path = ART / 'model.joblib'
+model_paths = [ART / 'model-metadata.json', ART / 'xgboost-model.json']
 @st.cache_resource
 def load_model(path, modified):
-    return joblib.load(path)  # Only trusted, locally generated model artifacts.
-bundle = load_model(str(model_path), model_path.stat().st_mtime_ns) if model_path.exists() else None
+    return load_portable(path)
+bundle = load_model(str(ART), tuple(p.stat().st_mtime_ns for p in model_paths)) if all(p.exists() for p in model_paths) else None
 if bundle is None:
     st.info('Saved-result mode. Train locally to enable live model scoring and drift experiments; no model is fabricated.')
 with st.sidebar:
     st.header('Investigation workbench')
     page = st.radio('Workspace', ['Overview', 'Investigate', 'Model lab', 'Human review', 'Drift monitor'])
-    st.caption('Local Python inference · no external calls')
+    st.caption('Python inference · no external calls')
     st.caption('The UI uses deterministic retrieval, not an LLM. Optional OpenAI generation is available through the Python API, with explicit opt-in.')
     st.divider()
-    st.caption('No authentication: run on localhost only. Analyst names are demo attribution.')
+    st.caption('No built-in authentication. Public/demo data only. Session isolation is not a secure multi-tenant boundary. Hosted privacy settings must be verified separately; analyst names are demo attribution.')
 
 if page == 'Overview':
     st.subheader('Held-out detection performance')
@@ -102,7 +111,7 @@ elif page == 'Investigate':
         with st.expander(f"{source['id']} · {source['title']} · {source['technique']}"):
             st.write(source['text']); st.link_button('MITRE ATT&CK reference', source['url'])
     if st.button('Add to human review queue', type='primary'):
-        queue = ReviewQueue(os.environ.get('SOC_REVIEW_DB', str(ROOT/'reviews.db')))
+        queue = ReviewQueue(review_database())
         queue.submit(report); queue.db.close()
         st.success('Added to review queue (duplicate records are not added twice). No response executed.')
     st.download_button('Download investigation JSON', json.dumps(report,indent=2), file_name=f'{event_id}-investigation.json', mime='application/json')
@@ -143,7 +152,7 @@ elif page == 'Model lab':
 
 elif page == 'Human review':
     st.subheader('Analyst decision queue')
-    queue = ReviewQueue(os.environ.get('SOC_REVIEW_DB', str(ROOT/'reviews.db')))
+    queue = ReviewQueue(review_database())
     rows = queue.list()
     if rows:
         st.dataframe(pd.DataFrame([{'event_id':r['event_id'],'status':r['status']} for r in rows]), hide_index=True, width='stretch')
@@ -170,7 +179,7 @@ elif page == 'Human review':
     audit = queue.audit()
     st.dataframe(pd.DataFrame(audit), width='stretch')
     st.download_button('Download audit JSON',json.dumps(audit,indent=2),file_name='soc-audit.json',mime='application/json')
-    st.caption('Local SQLite audit is persistent but not tamper-proof or authenticated. Duplicate decisions are blocked.')
+    st.caption('Session-isolated SQLite audit by default; reconnects/restarts may reset it. Download before leaving. Not tamper-proof or authenticated. A configured SOC_REVIEW_DB overrides isolation. Duplicate decisions are blocked.')
     queue.db.close()
 
 elif page == 'Drift monitor':

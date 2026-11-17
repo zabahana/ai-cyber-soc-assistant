@@ -1,0 +1,7 @@
+# Tested on Python 3.12. Community Cloud reads this file before pyproject.toml.
+streamlit==1.67.0
+numpy==2.3.5
+pandas==2.2.3
+scikit-learn==1.8.0
+xgboost==3.4.1
+joblib==1.5.3

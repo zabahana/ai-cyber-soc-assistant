@@ -74,17 +74,27 @@ The CI workflow is retained as `docs/ci-workflow.yml.example`. To activate it, c
 ```bash
 pip install -e '.[dev,web]'
 python -m soc_assistant.cli train --rows 20000
-streamlit run streamlit_app.py
+streamlit run streamlit_app.py --server.address=127.0.0.1
 ```
-Open **http://localhost:8501** on the computer running the app. It binds to localhost by default, with usage telemetry disabled. It is not publicly hosted or authenticated; do not expose it directly to the Internet. The local trusted model is loaded from `artifacts/model.joblib`. Without a trained model, the app clearly switches to saved-result mode; live scoring and drift experiments are disabled.
+Open **http://localhost:8501** on the computer running the app. The command above explicitly binds to localhost, with usage telemetry disabled. The repository config deliberately leaves the bind address unset so managed hosting can supply the correct listener; always include the localhost flag for a local-only run. It is not publicly hosted or authenticated; do not expose it directly to the Internet. The web app loads non-pickle portable models from `artifacts/xgboost-model.json` and `artifacts/model-metadata.json`. These small files are included for immediate inference without training on deployment. Without a trained model, the app clearly switches to saved-result mode; live scoring and drift experiments are disabled.
 
 Five workspaces:
 - **Overview:** held-out precision/recall, PR and calibration curves, confusion matrix, global feature importance and provenance.
 - **Investigate:** filter the saved example records, ask retrieval questions, inspect evidence/ATT&CK hypotheses, download a report, and add a record to review.
 - **Model lab:** edit 13 numeric features and run actual XGBoost/calibrator/Isolation Forest inference. Outputs are hypothetical inputs, not new observed telemetry.
-- **Human review:** approve/reject a simulated playbook with rationale and acknowledgement; persistent SQLite audit, idempotent record submission, duplicate decisions blocked.
+- **Human review:** approve/reject a simulated playbook with rationale and acknowledgement; session-isolated SQLite audit by default, idempotent record submission, duplicate decisions blocked.
 - **Drift monitor:** apply hypothetical feature shifts and recompute PSI against the training reference. No retraining or real response occurs.
 
-The interface does not invoke an external LLM or transmit telemetry. Its investigation mode is explicitly labeled deterministic retrieval. The optional Python LLM API remains opt-in. The UI's review database defaults to `reviews.db` (gitignored); `SOC_REVIEW_DB` overrides the path. `SOC_ARTIFACT_DIR` selects an alternate trusted artifact directory. Never load untrusted joblib files. Headless UI interaction tests use Streamlit AppTest: `pytest -q`; live-model tests skip when no trained model exists.
+The interface does not invoke an external LLM or transmit telemetry. Its investigation mode is explicitly labeled deterministic retrieval. The optional Python LLM API remains opt-in. The UI's review database is isolated per browser session by default and may reset on reconnect or server restart; download the audit before leaving. For a trusted single-user local install, set `SOC_REVIEW_DB` to a persistent SQLite path. That override shares the database across all sessions, so do not enable it on an app with untrusted visitors. `SOC_ARTIFACT_DIR` selects an alternate trusted artifact directory. Never load untrusted joblib files. Headless UI interaction tests use Streamlit AppTest: `pytest -q`; live-model tests skip when no trained model exists.
 
 The Python web app is not deployable as a static Site or JavaScript Worker: it needs a Python process and model files. A public deployment requires appropriate hosting, authentication, access controls and secrets management. No such production controls are claimed here.
+
+
+## Streamlit Community Cloud deployment
+Choose repository `zabahana/ai-cyber-soc-assistant`, branch `main`, main file `streamlit_app.py`, and **Python 3.12** in Advanced settings. The root `requirements.txt` pins tested versions. No API key or secrets are needed. Before sharing the app, verify available access controls and the actual audience in your Streamlit account. This project has no built-in authentication; private hosting access is not assumed or configured by the code.
+
+The committed native XGBoost JSON and explicit calibration/Isolation Forest JSON arrays enable actual inference immediately. No untrusted pickle is downloaded, no dataset download runs during startup, and no training repeats on widget changes. The resource cache loads the portable model once per process/artifact version. JSON data is not executable Python; nevertheless model files must remain maintained repository assets, not user uploads. `soc train` regenerates both local joblib and portable JSON artifacts.
+
+The portable scorer is tested against the trained sklearn/XGBoost pipeline. Benchmark metrics remain historical KDD99 estimates. Startup does not call an LLM or external telemetry API. On Community Cloud, the hosted service necessarily handles the interaction inputs: use public/demo data only. Each visitor gets a separate session review database by default; it is ephemeral, not durable enterprise audit storage. Session separation is not a secure multi-tenant boundary, and there is no user authentication or authorization in the app.
+
+If dependency installation fails, check Cloud logs and Python version; do not bypass package verification or load random model pickles. Review the [official dependency guide](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/app-dependencies). Cloud hosting has not been verified until the hosted app build succeeds.

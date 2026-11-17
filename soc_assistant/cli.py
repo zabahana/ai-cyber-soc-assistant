@@ -4,6 +4,7 @@ from pathlib import Path
 import joblib
 from .data import download,load_public,synthetic
 from .detection import fit,drift
+from .portable import export_portable
 from .investigation import investigate
 
 def main():
@@ -17,6 +18,7 @@ def main():
     frame,provenance=synthetic(args.rows) if args.synthetic else load_public(download('data/kddcup.data_10_percent.gz'),args.rows)
     bundle,metrics,predictions=fit(frame)
     joblib.dump(bundle,out/'model.joblib')
+    export_portable(bundle,out)
     (out/'metrics.json').write_text(json.dumps(metrics,indent=2))
     (out/'provenance.json').write_text(json.dumps(provenance,indent=2))
     predictions.sample(min(150,len(predictions)),random_state=42).sort_values('probability',ascending=False).to_json(out/'events.json',orient='records',indent=2)
