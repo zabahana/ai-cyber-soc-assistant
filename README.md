@@ -69,3 +69,22 @@ See `docs/VALIDATION.md` for the validation plan and operational gaps.
 
 ## GitHub Actions setup
 The CI workflow is retained as `docs/ci-workflow.yml.example`. To activate it, copy it to `.github/workflows/test.yml` using a GitHub credential with workflow permission. The initial push credential did not have that permission; no credentials or permissions were changed.
+
+## Interactive local web interface
+```bash
+pip install -e '.[dev,web]'
+python -m soc_assistant.cli train --rows 20000
+streamlit run streamlit_app.py
+```
+Open **http://localhost:8501** on the computer running the app. It binds to localhost by default, with usage telemetry disabled. It is not publicly hosted or authenticated; do not expose it directly to the Internet. The local trusted model is loaded from `artifacts/model.joblib`. Without a trained model, the app clearly switches to saved-result mode; live scoring and drift experiments are disabled.
+
+Five workspaces:
+- **Overview:** held-out precision/recall, PR and calibration curves, confusion matrix, global feature importance and provenance.
+- **Investigate:** filter the saved example records, ask retrieval questions, inspect evidence/ATT&CK hypotheses, download a report, and add a record to review.
+- **Model lab:** edit 13 numeric features and run actual XGBoost/calibrator/Isolation Forest inference. Outputs are hypothetical inputs, not new observed telemetry.
+- **Human review:** approve/reject a simulated playbook with rationale and acknowledgement; persistent SQLite audit, idempotent record submission, duplicate decisions blocked.
+- **Drift monitor:** apply hypothetical feature shifts and recompute PSI against the training reference. No retraining or real response occurs.
+
+The interface does not invoke an external LLM or transmit telemetry. Its investigation mode is explicitly labeled deterministic retrieval. The optional Python LLM API remains opt-in. The UI's review database defaults to `reviews.db` (gitignored); `SOC_REVIEW_DB` overrides the path. `SOC_ARTIFACT_DIR` selects an alternate trusted artifact directory. Never load untrusted joblib files. Headless UI interaction tests use Streamlit AppTest: `pytest -q`; live-model tests skip when no trained model exists.
+
+The Python web app is not deployable as a static Site or JavaScript Worker: it needs a Python process and model files. A public deployment requires appropriate hosting, authentication, access controls and secrets management. No such production controls are claimed here.

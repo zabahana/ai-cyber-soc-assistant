@@ -58,7 +58,7 @@ def reference_profile(frame):
     for feature in FEATURES:
         edges=np.unique(np.quantile(frame[feature], np.linspace(0,1,11)))
         # retain extrema as inner boundaries so constant-feature shifts remain visible
-        inner=np.array([np.nextafter(edges[0],-np.inf), np.nextafter(edges[0],np.inf)]) if len(edges)==1 else edges[1:-1]
+        inner=np.array([np.nextafter(edges[0],-np.inf), np.nextafter(edges[0],np.inf)]) if len(edges)==1 else edges
         bins=np.r_[-np.inf,inner,np.inf]
         counts=np.histogram(frame[feature],bins=bins)[0].astype(float)
         profile[feature]={'inner_edges':inner.tolist(),'proportions':(counts/counts.sum()).tolist()}
